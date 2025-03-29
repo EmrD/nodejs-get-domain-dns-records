@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNS Lookup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+            background-color: #f8f9fa;
+        }
+
+        input,
+        button {
+            padding: 10px;
+            margin: 5px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        input {
+            width: 50%;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        h2 {
+            color: #343a40;
+            margin-bottom: 20px;
+        }
+
+        .record-type {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 20px;
+            color: #007bff;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+        }
+
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+            font-size: 16px;
+        }
+
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        tr:hover {
+            background-color: #e9ecef;
+        }
+
+        pre {
+            text-align: left;
+            white-space: pre-wrap;
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            max-width: 90%;
+            margin: 20px auto;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .error {
+            color: red;
+            font-size: 18px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>DNS Lookup Tool</h2>
+    <input type="text" id="domain" placeholder="Enter domain">
+    <button onclick="fetchDnsRecords()">Check DNS</button>
+
+    <h3>Result:</h3>
+    <div id="output">
+        <pre>Waiting for input...</pre>
+    </div>
+
+    <script>
+        async function fetchDnsRecords() {
+            const domain = document.getElementById("domain").value;
+            if (!domain) {
+                alert("Please enter a domain!");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/dns-lookup?domain=${domain}`);
+                const data = await response.json();
+
+                console.log(JSON.stringify(data, null, 2 ))
+
+                const records = data["records"];
+                let structuredRecords = {};
+
+                Object.entries(records).forEach(([key, value]) => {
+                    if (Array.isArray(value)) {
+                        structuredRecords[key] = value.map(item => {
+                            if (typeof item === 'object' && item !== null) {
+                                return Object.entries(item).map(([subKey, subValue]) => `${subKey}: ${subValue}`);
+                            }
+                            return item;
+                        });
+                    } else if (typeof value === 'object' && value !== null) {
+                        structuredRecords[key] = Object.entries(value).map(([subKey, subValue]) => `${subKey}: ${subValue}`);
+                    } else {
+                        structuredRecords[key] = [value];
+                    }
+                });
+
+                let html_data = '';
+                Object.entries(structuredRecords).forEach(([recordType, values]) => {
+                    html_data += `<div class="record-type">${recordType}:</div><table><tr><th>Key</th><th>Value</th></tr>`;
+                    values.forEach(value => {
+                        if (Array.isArray(value)) {
+                            value.forEach(subValue => {
+                                html_data += `<tr><td>${subValue.split(":")[0]}</td><td>${subValue.split(":")[1]}</td></tr>`;
+                            });
+                        } else {
+                            html_data += `<tr><td colspan="2">${value}</td></tr>`;
+                        }
+                    });
+                    html_data += `</table>`;
+                });
+
+                document.getElementById("output").innerHTML = html_data;
+
+            } catch (error) {
+                document.getElementById("output").innerHTML = `<p class="error">Error fetching data: ${error}</p>`;
+            }
+        }
+    </script>
+
+</body>
+
+</html>
